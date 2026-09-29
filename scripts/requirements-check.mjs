@@ -107,6 +107,34 @@ try {
 
   await sleep(2100);
 
+  const pdfPath = path.join("scripts", "fixtures", "sample.pdf");
+  if (fs.existsSync(pdfPath)) {
+    const pdfBuf = fs.readFileSync(pdfPath);
+    const pdfForm = new FormData();
+    pdfForm.append("file", new Blob([pdfBuf], { type: "application/pdf" }), "sample.pdf");
+    pdfForm.append("languageCode", "en");
+    const pdfRes = await fetch(`${BASE}/api/v1/tutor/file`, {
+      method: "POST",
+      headers: { "x-api-key": API_KEY },
+      body: pdfForm,
+    });
+    const pdf = await pdfRes.json();
+    const pdfOk =
+      pdfRes.status === 200 &&
+      pdf.success &&
+      typeof pdf.data?.answer === "string" &&
+      pdf.data.answer.length > 20;
+    check(
+      "PDF document (analyzeFile equivalent)",
+      pdfOk,
+      pdfOk ? `answer len=${pdf.data.answer.length}` : pdf.message?.slice(0, 80),
+    );
+  } else {
+    check("PDF document", false, "fixture sample.pdf missing");
+  }
+
+  await sleep(2100);
+
   const rate = await jsonReq("POST", "/api/v1/tutor/ask", {
     body: { prompt: "ping", languageCode: "en" },
   });
