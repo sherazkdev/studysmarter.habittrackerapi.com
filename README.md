@@ -104,11 +104,11 @@ Structured routes validate model JSON with Zod (`src/schema/tutor-responses.ts`)
 
 ## Deploy
 
-VPS files: **`deploy/study-smarter-api/`** — PM2 (`ecosystem.config.cjs`, port **3012**), Nginx site **`study-smarter-api`**. Full steps: [deploy/study-smarter-api/DEPLOY.md](deploy/study-smarter-api/DEPLOY.md).
+VPS files: **`deploy/study-smarter-api/`** — PM2 (`ecosystem.config.cjs`, port **3021**), Nginx site **`study-smarter-api`**. Full steps: [deploy/study-smarter-api/DEPLOY.md](deploy/study-smarter-api/DEPLOY.md).
 
 ```bash
 npm run build
-npm start   # listens on 3012
+npm start   # listens on 3021
 ```
 
 Set all env vars on the host. Use HTTPS in production (`PUBLIC_BASE_URL`).

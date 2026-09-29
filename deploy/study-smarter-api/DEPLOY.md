@@ -1,7 +1,7 @@
 # VPS deploy — study-smarter-api
 
 Production domain: **studysmarter.habittrackerapi.com**  
-App port (internal): **3012** · PM2 name: **study-smarter-api** · Nginx site: **study-smarter-api**
+App port (internal): **3021** · PM2 name: **study-smarter-api** · Nginx site: **study-smarter-api**
 
 ## 1. Server prep (Ubuntu)
 
@@ -36,7 +36,7 @@ X_API_KEY=strong_random_client_key
 GROQ_CHAT_MODEL=openai/gpt-oss-120b
 GROQ_VISION_MODEL=qwen/qwen3.6-27b
 PUBLIC_BASE_URL=https://studysmarter.habittrackerapi.com
-PORT=3012
+PORT=3021
 ```
 
 ## 4. Build & PM2
@@ -52,7 +52,7 @@ pm2 startup   # run the command it prints
 Check:
 
 ```bash
-curl -s http://127.0.0.1:3012/api/health
+curl -s http://127.0.0.1:3021/api/health
 pm2 logs study-smarter-api
 ```
 
@@ -100,13 +100,12 @@ pm2 restart study-smarter-api
 
 | Port | Use |
 |------|-----|
-| **3012** | Next.js (PM2, localhost only) |
-| **80** | Nginx → proxy to 3012 |
+| **3021** | Next.js (PM2, localhost only) |
+| **80** | Nginx → proxy to 3021 |
 | **443** | HTTPS after certbot |
-| **3021** | Optional test (commented in nginx conf) |
 
 Free port check:
 
 ```bash
-sudo ss -tlnp | grep -E ':3012|:3021'
+sudo ss -tlnp | grep -E ':3021'
 ```
