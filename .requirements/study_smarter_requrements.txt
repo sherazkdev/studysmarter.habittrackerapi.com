@@ -1,0 +1,422 @@
+
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:zippy_question_solver/src/common/utils/remote_config.dart';
+import 'package:zippy_question_solver/src/common/utils/shared_preference_helper.dart';
+
+class GeminiException implements Exception {
+  final String message;
+  final int? statusCode;
+  GeminiException(this.message, {this.statusCode});
+  @override
+  String toString() => "GeminiException: $message (Status: $statusCode)";
+}
+
+class RateLimitException extends GeminiException {
+  RateLimitException(super.message) : super(statusCode: 429);
+}
+
+class GeminiSevice {
+  static String get _apiKey => RemoteConfig.geminiApiKey;
+  static String get _endpoint => RemoteConfig.geminiGenerateContentEndpoint;
+
+  static DateTime? _lastRequestTime;
+  static const Duration _minRequestInterval = Duration(seconds: 2);
+
+  static void _checkRateLimit() {
+    final now = DateTime.now();
+    if (_lastRequestTime != null) {
+      final difference = now.difference(_lastRequestTime!);
+      if (difference < _minRequestInterval) {
+        throw RateLimitException("Please wait before sending another request.");
+      }
+    }
+    _lastRequestTime = now;
+  }
+
+  static void _ensureGeminiConfigured() {
+    if (!RemoteConfig.isGeminiConfigured) {
+      throw GeminiException(
+        'Gemini is not configured. Set api_key and model in ads_test (debug) or ads_real (release) on Firebase Remote Config.',
+      );
+    }
+  }
+
+  static Future<String?> getLanguageCode() async {
+    return SharedPrefHelper.getLanguageCode();
+  }
+
+  static const Map<String, String> _languageNames = {
+    'en': 'English',
+    'ar': 'Arabic',
+    'zh': 'Chinese',
+    'de': 'German',
+    'fr': 'French',
+    'pt': 'Portuguese',
+    'es': 'Spanish',
+    'it': 'Italian',
+    'tr': 'Turkish',
+    'id': 'Indonesian',
+    'ms': 'Malay',
+  };
+
+  static String _resolveLanguageName(String code) {
+    return _languageNames[code.toLowerCase()] ?? 'English';
+  }
+
+  /// Sends a POST request and automatically retries on transient server
+  /// errors (e.g. 503 "model overloaded", 500/502/504). These are temporary
+  /// spikes in demand and usually succeed on a quick retry, so we should not
+  /// surface them to the user as a hard error right away.
+  static Future<http.Response> _postWithRetry({
+    required Uri url,
+    required Map<String, String> headers,
+    required String body,
+    int maxRetries = 3,
+  }) async {
+    int attempt = 0;
+    while (true) {
+      http.Response response;
+      try {
+        response = await http.post(url, headers: headers, body: body);
+      } on SocketException {
+        // Network blip – retry a few times before failing.
+        if (attempt >= maxRetries) rethrow;
+        attempt++;
+        await Future.delayed(_retryDelay(attempt));
+        continue;
+      }
+
+      final isTransient = response.statusCode == 503 ||
+          response.statusCode == 500 ||
+          response.statusCode == 502 ||
+          response.statusCode == 504;
+
+      if (!isTransient || attempt >= maxRetries) {
+        return response;
+      }
+
+      attempt++;
+      await Future.delayed(_retryDelay(attempt));
+    }
+  }
+
+  /// Exponential backoff: 1s, 2s, 4s ...
+  static Duration _retryDelay(int attempt) {
+    return Duration(milliseconds: 1000 * (1 << (attempt - 1)));
+  }
+
+  static String _languageScriptHint(String code) {
+    switch (code) {
+      case 'ar':
+        return 'Write all explanations in Arabic script (العربية).';
+      case 'zh':
+        return 'Write all explanations in Simplified Chinese (简体中文).';
+      case 'de':
+        return 'Write all explanations in German (Deutsch).';
+      case 'fr':
+        return 'Write all explanations in French (Français).';
+      case 'pt':
+        return 'Write all explanations in Portuguese (Português).';
+      case 'es':
+        return 'Write all explanations in Spanish (Español).';
+      case 'it':
+        return 'Write all explanations in Italian (Italiano).';
+      case 'tr':
+        return 'Write all explanations in Turkish (Türkçe).';
+      case 'id':
+        return 'Write all explanations in Indonesian (Bahasa Indonesia).';
+      case 'ms':
+        return 'Write all explanations in Malay (Bahasa Melayu).';
+      default:
+        return 'Write all explanations in English.';
+    }
+  }
+
+  static Future<String> _resolvedLanguageCode() async {
+    final saved = await getLanguageCode();
+    if (saved != null && saved.isNotEmpty) {
+      return saved.toLowerCase();
+    }
+    return 'en';
+  }
+
+  static String _buildLanguageSystemInstruction(String code) {
+    final languageName = _resolveLanguageName(code);
+    final scriptHint = _languageScriptHint(code);
+
+    return '''
+You are a study tutor. Your highest priority rule is OUTPUT LANGUAGE.
+
+OUTPUT LANGUAGE (MANDATORY):
+- App language: $languageName (code: $code)
+- $scriptHint
+- Every word of your answer must be in $languageName only.
+- If the user question is in another language, still answer in $languageName.
+- If an image or document contains English or any other language, read it but explain the answer in $languageName only.
+- Do NOT answer in English unless the app language is English.
+- Translate all explanations, steps, summaries, titles, and JSON text values into $languageName.
+- Math numbers and symbols such as √, ×, ÷ may stay as symbols, but surrounding text must be in $languageName.''';
+  }
+
+  static String _buildTutorSystemInstruction() {
+    return '''
+You help students understand subjects such as Math, Physics, Chemistry, Biology, Computer, History, Geography, and other study topics.
+For math questions, explain step-by-step using plain text symbols like √ and × (no LaTeX).
+At the end of every math answer, give the approximate numeric value.
+For other study questions, explain clearly and simply for students.
+Keep explanations short, clear, and easy to follow.
+If the question is not study-related, reply briefly that you only help with study topics.
+Always end with a short summary of the main idea in plain text (no Markdown).''';
+  }
+
+  static String _languageReminder(String code) {
+    final languageName = _resolveLanguageName(code);
+    return '\n\n[REMINDER: Your complete response must be written in $languageName ($code) only.]';
+  }
+
+  static Map<String, dynamic> _buildApiBody({
+    required String systemText,
+    required List<Map<String, dynamic>> userParts,
+    Map<String, dynamic>? generationConfig,
+  }) {
+    return {
+      'systemInstruction': {
+        'parts': [
+          {'text': systemText},
+        ],
+      },
+      'contents': [
+        {
+          'role': 'user',
+          'parts': userParts,
+        },
+      ],
+      if (generationConfig != null) 'generationConfig': generationConfig,
+    };
+  }
+
+  static Future<String> askOpenAI(String prompt) async {
+    _ensureGeminiConfigured();
+    _checkRateLimit();
+    final langCode = await _resolvedLanguageCode();
+    final systemText =
+        '${_buildLanguageSystemInstruction(langCode)}\n\n${_buildTutorSystemInstruction()}';
+
+    final body = jsonEncode(
+      _buildApiBody(
+        systemText: systemText,
+        userParts: [
+          {
+            'text': '$prompt${_languageReminder(langCode)}',
+          },
+        ],
+        generationConfig: {
+          'temperature': 0.7,
+        },
+      ),
+    );
+
+    final response = await _postWithRetry(
+      url: Uri.parse('$_endpoint?key=$_apiKey'),
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data["candidates"][0]["content"]["parts"][0]["text"] ??
+          "No response from Gemini.";
+    } else {
+      if (response.statusCode == 429) {
+        throw RateLimitException("Quota exceeded (429)");
+      }
+      throw GeminiException(
+        "Error ${response.statusCode}: ${response.body}",
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> analyzeImage(File imageFile) async {
+    _ensureGeminiConfigured();
+    _checkRateLimit();
+    final langCode = await _resolvedLanguageCode();
+    final bytes = await imageFile.readAsBytes();
+    final base64Image = base64Encode(bytes);
+
+    final systemText = _buildLanguageSystemInstruction(langCode);
+
+    final prompt = '''
+You are an intelligent tutor that can solve any problem: math, programming, science, or general knowledge.
+Always provide an answer to the question in the image.
+
+When the question is about Math or Calculus, respond in JSON:
+{
+  "answer": "...",
+  "verification": "...",
+  "steps": [
+    {"stepNumber": 1, "stepTitle": "...", "stepDescription": "..."}
+  ],
+  "why": {
+    "exampleTitle": "...",
+    "explanation": "...",
+    "keyPoints": ["...", "..."],
+    "conclusion": "..."
+  }
+}
+
+For math:
+- Use plain text symbols like √, ×, ÷ (no LaTeX).
+- Show approximate numeric value in the final step.
+- All text fields must be in the required app language.
+
+For other study subjects, respond in JSON:
+{
+  "answer": "...",
+  "explanation": "..."
+}
+
+Return valid JSON only. No Markdown outside JSON.
+${_languageReminder(langCode)}''';
+
+    final body = jsonEncode(
+      _buildApiBody(
+        systemText: systemText,
+        userParts: [
+          {'text': prompt},
+          {
+            'inline_data': {
+              'mime_type': 'image/jpeg',
+              'data': base64Image,
+            },
+          },
+        ],
+        generationConfig: {
+          'response_mime_type': 'application/json',
+        },
+      ),
+    );
+
+    final response = await _postWithRetry(
+      url: Uri.parse('$_endpoint?key=$_apiKey'),
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final String? content =
+          data["candidates"]?[0]?["content"]?["parts"]?[0]?["text"];
+
+      if (content == null) throw GeminiException("No response content from AI");
+
+      final parsedJson = jsonDecode(content);
+      return parsedJson is Map<String, dynamic>
+          ? parsedJson
+          : throw GeminiException("Invalid response format from AI");
+    } else {
+      if (response.statusCode == 429) {
+        throw RateLimitException("Quota exceeded (429)");
+      }
+      throw GeminiException(
+        "API Error: ${response.statusCode} - ${response.body}",
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> analyzeFile(File file) async {
+    _ensureGeminiConfigured();
+    _checkRateLimit();
+
+    final String uploadUrl =
+        "${RemoteConfig.geminiFileUploadEndpoint}?key=$_apiKey";
+
+    final uploadRequest = http.MultipartRequest('POST', Uri.parse(uploadUrl))
+      ..headers['X-Goog-Upload-Protocol'] = 'multipart'
+      ..fields['metadata'] =
+          jsonEncode({"file": {"display_name": file.path.split('/').last}})
+      ..files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final streamedResponse = await uploadRequest.send();
+    final uploadResponse = await http.Response.fromStream(streamedResponse);
+    final uploadResult = jsonDecode(uploadResponse.body);
+
+    if (uploadResponse.statusCode != 200) {
+      if (uploadResponse.statusCode == 429) {
+        throw RateLimitException("Upload quota exceeded (429)");
+      }
+      throw GeminiException(
+        "File upload failed: ${uploadResponse.statusCode} ${uploadResponse.body}",
+        statusCode: uploadResponse.statusCode,
+      );
+    }
+
+    final String fileUri = uploadResult['file']['uri'];
+    if (fileUri.isEmpty) {
+      throw Exception("No file URI returned from Gemini upload");
+    }
+
+    final langCode = await _resolvedLanguageCode();
+    final systemText = _buildLanguageSystemInstruction(langCode);
+
+    final prompt = '''
+Read the uploaded file and provide a single answer that includes:
+- A short summary
+- Key points
+- Answers to any questions in the document if available
+
+Return ONLY valid JSON:
+{
+  "answer": "Everything combined here as one text string"
+}
+${_languageReminder(langCode)}''';
+
+    final body = jsonEncode(
+      _buildApiBody(
+        systemText: systemText,
+        userParts: [
+          {'text': prompt},
+          {
+            'file_data': {
+              'mime_type': 'application/pdf',
+              'file_uri': fileUri,
+            },
+          },
+        ],
+        generationConfig: {
+          'response_mime_type': 'application/json',
+        },
+      ),
+    );
+
+    final response = await _postWithRetry(
+      url: Uri.parse('$_endpoint?key=$_apiKey'),
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (response.statusCode != 200) {
+      if (response.statusCode == 429) {
+        throw RateLimitException("Quota exceeded (429)");
+      }
+      throw GeminiException(
+        "API Error: ${response.statusCode} - ${response.body}",
+        statusCode: response.statusCode,
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    final String? content =
+        data["candidates"]?[0]?["content"]?["parts"]?[0]?["text"];
+
+    if (content == null) throw GeminiException("No response content from AI");
+
+    final parsed = jsonDecode(content) as Map<String, dynamic>;
+    final answer = parsed["answer"] ?? "No answer found.";
+
+    return {"answer": answer};
+  }
+}

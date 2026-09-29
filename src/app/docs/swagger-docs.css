@@ -1,0 +1,60 @@
+/* Full-width readable Swagger UI (light theme) */
+
+.docs-shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  flex: 1;
+  flex-direction: column;
+  background: var(--background, #f2f4f5);
+}
+
+.swagger-docs-root {
+  display: flex;
+  width: 100%;
+  min-height: calc(100vh - 4rem);
+  flex: 1;
+  flex-direction: column;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+.swagger-docs-root .swagger-ui .wrapper {
+  box-sizing: border-box;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 4rem;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.swagger-docs-root .swagger-ui .info .title {
+  font-size: 2rem !important;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.swagger-docs-root .swagger-ui .opblock-tag {
+  font-size: 1.125rem;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.swagger-docs-root .swagger-ui .btn.authorize {
+  border-color: #09b1ba;
+  color: #078a91;
+}
+
+.swagger-docs-root .swagger-ui .btn.authorize svg {
+  fill: #09b1ba;
+}
+
+.swagger-docs-root .swagger-ui {
+  flex: 1;
+  width: 100%;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.swagger-docs-root .swagger-ui .scheme-container {
+  box-shadow: none;
+  padding: 1rem 0;
+}
