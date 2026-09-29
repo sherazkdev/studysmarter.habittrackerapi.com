@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Study Smarter API — Endpoint Reference</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --background: #eef1f3;
+        --foreground: #101828;
+        --muted: #667085;
+        --surface: #ffffff;
+        --border: #dce1e8;
+        --accent: #09b1ba;
+        --accent-hover: #078a91;
+        --accent-soft: #e3f7f8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        font-size: 10.5pt;
+        line-height: 1.55;
+        color: var(--foreground);
+        background: var(--background);
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .page {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 14mm 16mm 18mm;
+        background: var(--background);
+        background-image: radial-gradient(
+            ellipse 90% 40% at 50% -5%,
+            var(--accent-soft),
+            transparent 55%
+          ),
+          linear-gradient(to bottom, transparent, var(--background));
+      }
+
+      header.hero {
+        background: var(--surface);
+        border: 1px solid color-mix(in srgb, var(--border) 92%, white);
+        border-radius: 16px;
+        padding: 22px 24px;
+        box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+        margin-bottom: 18px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+        color: #fff;
+        font-weight: 700;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .brand-text h1 {
+        margin: 0;
+        font-size: 20pt;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-text p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 9.5pt;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .pill {
+        font-size: 8.5pt;
+        font-weight: 600;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: #056770;
+        border: 1px solid rgba(9, 177, 186, 0.25);
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid color-mix(in srgb, var(--border) 92%, white);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 13pt;
+        font-weight: 700;
+        color: var(--foreground);
+        letter-spacing: -0.01em;
+      }
+
+      h2 .accent-bar {
+        display: inline-block;
+        width: 4px;
+        height: 1em;
+        background: var(--accent);
+        border-radius: 2px;
+        margin-right: 8px;
+        vertical-align: -0.1em;
+      }
+
+      p.lead {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 10pt;
+      }
+
+      .base-url {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 10pt;
+        font-weight: 500;
+        color: var(--accent-hover);
+        background: var(--accent-soft);
+        border: 1px solid rgba(9, 177, 186, 0.35);
+        border-radius: 10px;
+        padding: 12px 14px;
+        word-break: break-all;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9.5pt;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+
+      th {
+        font-weight: 600;
+        color: var(--muted);
+        font-size: 8.5pt;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .method {
+        display: inline-block;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        padding: 3px 8px;
+        border-radius: 6px;
+      }
+
+      .method-post {
+        background: #e3f7f8;
+        color: #056770;
+        border: 1px solid rgba(9, 177, 186, 0.35);
+      }
+
+      .method-get {
+        background: #ecfdf3;
+        color: #067647;
+        border: 1px solid rgba(6, 118, 71, 0.25);
+      }
+
+      code.path {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 9pt;
+        font-weight: 500;
+      }
+
+      pre {
+        margin: 10px 0 0;
+        padding: 12px 14px;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 8.5pt;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #344054;
+      }
+
+      .endpoint-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+
+      .endpoint-title {
+        font-weight: 600;
+        font-size: 11pt;
+      }
+
+      .endpoint-desc {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 9.5pt;
+      }
+
+      .label {
+        font-size: 8pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 12px 0 4px;
+      }
+
+      .lang-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .lang {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 8.5pt;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: #f2f4f7;
+        border: 1px solid var(--border);
+      }
+
+      footer {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 8.5pt;
+        color: var(--muted);
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+        .page {
+          padding: 0;
+          background: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div class="brand">
+          <div class="logo">S</div>
+          <div class="brand-text">
+            <h1>Study Smarter API</h1>
+            <p>Groq tutor backend · REST · OpenAPI 3</p>
+          </div>
+        </div>
+        <p class="lead" style="margin: 0">
+          Mobile app is endpoint par requests bhejti hai. Firebase ads + Remote Config rakhta hai.
+          <strong>x-api-key</strong> har <code class="path">/api/v1/*</code> route par zaroori hai.
+          Language header nahi — body/form mein <code class="path">languageCode</code>.
+        </p>
+        <div class="pill-row">
+          <span class="pill">3 tutor routes</span>
+          <span class="pill">11 languages</span>
+          <span class="pill">2s rate limit</span>
+          <span class="pill">Groq server-only</span>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2><span class="accent-bar"></span>Production base URL</h2>
+        <div class="base-url">https://studysmarter.habittrackerapi.com</div>
+        <p class="lead" style="margin-top: 12px; margin-bottom: 0">
+          Interactive docs: <code class="path">/docs</code> · OpenAPI JSON: <code class="path">GET /api/openapi</code>
+        </p>
+      </section>
+
+      <section class="card">
+        <h2><span class="accent-bar"></span>Authentication</h2>
+        <table>
+          <tr>
+            <th>Header</th>
+            <th>Value</th>
+          </tr>
+          <tr>
+            <td><code class="path">x-api-key</code></td>
+            <td>Client key — server env <code class="path">X_API_KEY</code> = Firebase <code class="path">tutor_api_key</code></td>
+          </tr>
+        </table>
+        <pre>curl -X POST "https://studysmarter.habittrackerapi.com/api/v1/tutor/ask" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_CLIENT_KEY" \
+  -d '{"prompt":"What is 2+2?","languageCode":"en"}'</pre>
+      </section>
+
+      <section class="card">
+        <h2><span class="accent-bar"></span>App method → API mapping</h2>
+        <table>
+          <tr>
+            <th>Flutter (legacy client)</th>
+            <th>HTTP</th>
+            <th>Response field</th>
+          </tr>
+          <tr>
+            <td><code class="path">askOpenAI(prompt)</code></td>
+            <td><span class="method method-post">POST</span> <code class="path">/api/v1/tutor/ask</code></td>
+            <td><code class="path">data.text</code></td>
+          </tr>
+          <tr>
+            <td><code class="path">analyzeImage(jpeg)</code></td>
+            <td><span class="method method-post">POST</span> <code class="path">/api/v1/tutor/image</code></td>
+            <td><code class="path">data</code> (math or non-math JSON)</td>
+          </tr>
+          <tr>
+            <td><code class="path">analyzeFile(pdf)</code></td>
+            <td><span class="method method-post">POST</span> <code class="path">/api/v1/tutor/file</code></td>
+            <td><code class="path">data.answer</code></td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2><span class="accent-bar"></span>Firebase Remote Config</h2>
+        <table>
+          <tr>
+            <th>Key</th>
+            <th>Value</th>
+          </tr>
+          <tr>
+            <td><code class="path">tutor_api_base_url</code></td>
+            <td><code class="path">https://studysmarter.habittrackerapi.com</code></td>
+          </tr>
+          <tr>
+            <td><code class="path">tutor_api_key</code></td>
+            <td>Same as server <code class="path">X_API_KEY</code></td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2><span class="accent-bar"></span>Endpoints</h2>
+
+        <div style="margin-bottom: 16px">
+          <div class="endpoint-head">
+            <span class="method method-post">POST</span>
+            <code class="path">/api/v1/tutor/ask</code>
+            <span class="endpoint-title">Text question</span>
+          </div>
+          <p class="endpoint-desc">Plain-text tutor answer; math with steps + Summary label. JSON body.</p>
+          <div class="label">Request</div>
+          <pre>{
+  "prompt": "Explain photosynthesis briefly",
+  "languageCode": "en"
+}</pre>
+          <div class="label">Response (200)</div>
+          <pre>{
+  "success": true,
+  "message": "Answer generated.",
+  "statusCode": 200,
+  "data": { "text": "..." }
+}</pre>
+        </div>
+
+        <div style="margin-bottom: 16px">
+          <div class="endpoint-head">
+            <span class="method method-post">POST</span>
+            <code class="path">/api/v1/tutor/image</code>
+            <span class="endpoint-title">Image question</span>
+          </div>
+          <p class="endpoint-desc">multipart/form-data · JPEG only · max 10MB</p>
+          <div class="label">Request</div>
+          <pre>Content-Type: multipart/form-data
+
+image: (JPEG file)
+languageCode: en</pre>
+          <div class="label">Response (200) — math</div>
+          <pre>{
+  "success": true,
+  "data": {
+    "answer": "...",
+    "verification": "...",
+    "steps": [{ "stepNumber": 1, "stepTitle": "...", "stepDescription": "..." }],
+    "why": { "exampleTitle": "...", "explanation": "...", "keyPoints": [], "conclusion": "..." }
+  }
+}</pre>
+          <div class="label">Response (200) — non-math</div>
+          <pre>{ "success": true, "data": { "answer": "...", "explanation": "..." } }</pre>
+        </div>
+
+        <div style="margin-bottom: 16px">
+          <div class="endpoint-head">
+            <span class="method method-post">POST</span>
+            <code class="path">/api/v1/tutor/file</code>
+            <span class="endpoint-title">PDF document</span>
+          </div>
+          <p class="endpoint-desc">multipart/form-data · PDF max 15MB · text extraction only (no OCR)</p>
+          <div class="label">Request</div>
+          <pre>Content-Type: multipart/form-data
+
+file: application/pdf
+languageCode: en</pre>
+          <div class="label">Response (200)</div>
+          <pre>{
+  "success": true,
+  "data": {
+    "answer": "Summary + key points + answers (one string)"
+  }
+}</pre>
+        </div>
+
+        <div>
+          <div class="endpoint-head">
+            <span class="method method-get">GET</span>
+            <code class="path">/api/health</code>
+            <span class="endpoint-title">Health</span>
+          </div>
+          <p class="endpoint-desc">No x-api-key. Uptime monitoring.</p>
+          <div class="label">Response (200)</div>
+          <pre>{
+  "success": true,
+  "data": { "service": "study-smarter-api", "status": "ok" }
+}</pre>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2><span class="accent-bar"></span>App languages</h2>
+        <p class="endpoint-desc">Invalid or missing <code class="path">languageCode</code> → server uses <code class="path">en</code>.</p>
+        <div class="lang-grid">
+          <span class="lang">en</span><span class="lang">ar</span><span class="lang">zh</span><span class="lang">de</span>
+          <span class="lang">fr</span><span class="lang">pt</span><span class="lang">es</span><span class="lang">it</span>
+          <span class="lang">tr</span><span class="lang">id</span><span class="lang">ms</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2><span class="accent-bar"></span>HTTP status codes</h2>
+        <table>
+          <tr>
+            <th>Code</th>
+            <th>Meaning</th>
+            <th>When</th>
+          </tr>
+          <tr>
+            <td>200</td>
+            <td>Success</td>
+            <td>Standard envelope with <code class="path">data</code></td>
+          </tr>
+          <tr>
+            <td>400</td>
+            <td>Bad request</td>
+            <td>Validation, wrong file type, unreadable PDF</td>
+          </tr>
+          <tr>
+            <td>401</td>
+            <td>Unauthorized</td>
+            <td>Missing or invalid <code class="path">x-api-key</code></td>
+          </tr>
+          <tr>
+            <td>405</td>
+            <td>Method not allowed</td>
+            <td>Tutor routes are POST-only</td>
+          </tr>
+          <tr>
+            <td>429</td>
+            <td>Rate limited</td>
+            <td>Min 2 seconds between requests per key</td>
+          </tr>
+          <tr>
+            <td>502</td>
+            <td>Upstream / format</td>
+            <td>Groq error or AI output validation failed</td>
+          </tr>
+        </table>
+      </section>
+
+      <footer>
+        Study Smarter API · Groq on server only · Generated reference for production integration
+      </footer>
+    </div>
+  </body>
+</html>
